@@ -31,6 +31,8 @@ class MongodBase():
         self.__port = port
         self.databases = databases
         self.collection = collection
+        if databases and collection is None:
+            return False
         logging.info("connect:"+str(self.__host)+":"+str(self.__port)+"<"+self.databases+"-->"+self.collection+">")
 
     def __getMongodb(self):
@@ -144,13 +146,36 @@ class MongodBase():
         else:
             return None
 
-    def find_many_desc(self, args, sort, desc=1):
+    def find_manyforMysql_desc(self, args={}, sort="{}", desc=1):
+        '''
+        该方法为读取并转换插入mysql
+        1.find_manyforMysql_desc(args={}, sort="id", desc=1)
+        该请求方式为默认查询当前的集合并对id字段进行降序排序，排除_id的字段
+        查询数据并排序。排序规则：1为降序，其他为升序，默认为降序
+        2.其他请求方式为 {"name": {"$lt": 100}}, "_id", 1
+        可根据条件进行查询，但条件需为字典dict类型，
+        可根据某个字段进行排序默认为空字典，直接输入字段名即可
+        返回字典的items需要进行轮训读取
+        '''
+        db = self.__getColl()
+        if self.is_dict(args):
+            if desc == 1:
+                itme = db.find(args, {"_id": 0}).sort([(sort, pymongo.DESCENDING)])
+                logging.info("find:"+str(args)+"and"+str(sort)+"DESCENDING")
+            else:
+                itme = db.find(args, {"_id": 0}).sort([(sort, pymongo.ASCENDING)])
+                logging.info("find:"+str(args)+"and"+str(sort)+"ASCENDING")
+            return itme
+        else:
+            return None
+
+    def find_many_desc(self, args, sort="{}", desc=1):
         '''
         查询数据并排序。排序规则：1为降序，其他为升序，默认为降序
         请求方式为 {"name": {"$lt": 100}}, "_id", 1
         可根据条件进行查询，但条件需为字典dict类型，
         可根据某个字段进行排序，直接输入字段名即可
-        返回items
+        返回字典的items
         '''
         db = self.__getColl()
         if self.is_dict(args):

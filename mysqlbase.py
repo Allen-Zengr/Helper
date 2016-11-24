@@ -16,9 +16,10 @@ logging.basicConfig(level=logging.DEBUG,
 
 '''
      依赖MySQLdb,logging模块
+     为了提高事务处理能力,所有的事务都改为手动执行commit()
 '''
 class MySQLBase():
-    def __init__(self, host, port, user, password, charset="utf8"):
+    def __init__(self, host, port, user, password, db=None , charset="utf8"):
         '''
         初始化
         :param host:mysql服务的ip地址
@@ -33,10 +34,15 @@ class MySQLBase():
         self.__user = user
         self.__password = password
         self.__charset = charset
+        self.db = db
         try:
             self.__con = MySQLdb.connect(host=self.__host, user=self.__user, passwd=self.__password)
             self.__con.set_character_set(self.__charset)
             self.__cur = self.__con.cursor()
+            if self.db is not None:
+                self.selectDB(self.db)
+            else:
+                print "Please Select DataBase."
         except MySQLdb.Error as e:
             print "Mysql Error %d: %s" % (e.args[0], e.args[1])
             logging.error("Mysql Error %d: %s" % (e.args[0], e.args[1]))
@@ -97,6 +103,13 @@ class MySQLBase():
             print "Mysql Error %d: %s" % (e.args[0], e.args[1])
             logging.error("Mysql Error %d: %s" % (e.args[0], e.args[1]))
 
+    def dealInsertStr(self, p_data):
+        for key in p_data:
+            p_data[key] = "'"+str(p_data[key])+"'"
+        #key = ','.join(p_data.keys())
+        value = ','.join(p_data.values())
+        return "("+value+"),"
+
     def insert(self, p_table_name, p_data):
         '''
         插入
@@ -111,7 +124,7 @@ class MySQLBase():
             value = ','.join(p_data.values())
             ret_sql = "INSERT INTO " + p_table_name + " (" + key + ") VALUES (" + value + ")"
             self.__execSQL(ret_sql)
-            self.commit()
+            #self.commit()
             return True
         except MySQLdb.Error as e:
             print "Mysql Error %d: %s" % (e.args[0], e.args[1])
@@ -141,7 +154,7 @@ class MySQLBase():
             sql = "UPDATE "+tableName+" SET "+items+" WHERE "+whereItems
             self.__execSQL("set names 'utf8'")
             self.__execSQL(sql)
-            self.commit()
+            #self.commit()
             return True
         except MySQLdb.Error as e:
             print('MySql Error: %s %s' % (e.args[0], e.args[1]))
@@ -164,7 +177,7 @@ class MySQLBase():
             whereItem = " AND ".join(whereData)
             sql = "DELETE FROM "+p_table+" WHERE "+whereItem
             self.__execSQL(sql)
-            self.commit()
+            #self.commit()
             return True
         except MySQLdb.Error as e:
             print('MySql Error: %s %s'% (e.args[0], e.args[1]))
